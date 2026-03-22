@@ -39,9 +39,14 @@ if question := st.chat_input("Введите вопрос..."):
         st.markdown(answer)
 
         with st.expander("📄 Источники"):
-            for doc in sources:
-                st.markdown(f"**{doc.metadata.get('source', 'документ')}** "
-                            f"(стр. {doc.metadata.get('page', '?')})")
-                st.caption(doc.page_content[:300] + "...")
+            for i, doc in enumerate(sources):
+                source = doc.metadata.get('source', 'документ')
+                page = doc.metadata.get('page', '?')
+                # Чистим текст от лишних переносов
+                clean_text = ' '.join(doc.page_content.split())
+                st.markdown(f"**{source}** (стр. {page})")
+                st.caption(clean_text[:300] + "...")
+                if i < len(sources) - 1:
+                    st.divider()
 
     st.session_state.messages.append({"role": "assistant", "content": answer})
