@@ -15,3 +15,6 @@ venv/
 
 # OS
 .DS_Store
+
+# История чата
+chat_history.json
