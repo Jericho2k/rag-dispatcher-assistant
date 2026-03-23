@@ -1,82 +1,197 @@
-from fastapi import FastAPI, UploadFile, File
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
-from pydantic import BaseModel
 import os
 import shutil
-from rag_chain import build_chain
-from chat_history import (load_all_chats, create_chat, get_chat_messages,
-                           save_chat_messages, delete_chat)
+from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, status
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+from fastapi.security import OAuth2PasswordRequestForm
+from pydantic import BaseModel
+from dotenv import load_dotenv
+from database import supabase
+from auth import create_access_token, get_current_user, require_admin
+from rag_chain import ask
 from indexer import build_index
+
+load_dotenv()
 
 app = FastAPI()
 
-# ─── RAG chain singleton ───────────────────────────────────────────────────────
-_chain = None
-
-def get_chain():
-    global _chain
-    if _chain is None:
-        try:
-            _chain = build_chain()
-        except Exception as e:
-            print(f"Chain error: {e}")
-    return _chain
-
-# ─── Models ────────────────────────────────────────────────────────────────────
+# ── Models ─────────────────────────────────────────────────────────────────────
 class QuestionRequest(BaseModel):
     chat_id: str
     question: str
 
-class RenameRequest(BaseModel):
-    title: str
+class CreateUserRequest(BaseModel):
+    email: str
+    password: str
+    name: str
 
-# ─── Chat endpoints ────────────────────────────────────────────────────────────
+# ── Auth endpoints ─────────────────────────────────────────────────────────────
+@app.post("/api/auth/login")
+async def login(form: OAuth2PasswordRequestForm = Depends()):
+    try:
+        res = supabase.auth.sign_in_with_password({
+            "email": form.username,
+            "password": form.password
+        })
+        user_id = res.user.id
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Неверный email или пароль"
+        )
+
+    role_res = supabase.table("user_roles")\
+        .select("role, name, email")\
+        .eq("user_id", user_id).execute()
+    
+    role_data = role_res.data[0] if role_res.data else {}
+    role = role_data.get("role", "user")
+    name = role_data.get("name", "")
+
+    token = create_access_token({
+        "sub": user_id,
+        "role": role,
+        "name": name,
+        "email": form.username
+    })
+    return {"access_token": token, "token_type": "bearer", "role": role, "name": name}
+
+@app.get("/api/auth/me")
+async def me(current_user: dict = Depends(get_current_user)):
+    return current_user
+
+# ── User management (admin only) ───────────────────────────────────────────────
+@app.post("/api/users")
+async def create_user(
+    req: CreateUserRequest,
+    current_user: dict = Depends(require_admin)
+):
+    try:
+        res = supabase.auth.admin.create_user({
+            "email": req.email,
+            "password": req.password,
+            "email_confirm": True
+        })
+        user_id = res.user.id
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Ошибка: {str(e)}")
+
+    supabase.table("user_roles").insert({
+        "user_id": user_id,
+        "role": "user",
+        "name": req.name,
+        "email": req.email
+    }).execute()
+
+    return {"ok": True, "email": req.email}
+
+@app.get("/api/users")
+async def list_users(current_user: dict = Depends(require_admin)):
+    res = supabase.table("user_roles")\
+        .select("user_id, role, name, email")\
+        .execute()
+    return res.data
+
+@app.delete("/api/users/{user_id}")
+async def delete_user(
+    user_id: str,
+    current_user: dict = Depends(require_admin)
+):
+    try:
+        supabase.auth.admin.delete_user(user_id)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    
+    supabase.table("user_roles").delete().eq("user_id", user_id).execute()
+    return {"ok": True}
+
+# ── Chat endpoints ─────────────────────────────────────────────────────────────
 @app.get("/api/chats")
-def list_chats():
-    return load_all_chats()
+async def list_chats(current_user: dict = Depends(get_current_user)):
+    res = supabase.table("chats")\
+        .select("*")\
+        .eq("user_id", current_user["user_id"])\
+        .order("created_at", desc=True)\
+        .execute()
+    return res.data
 
 @app.post("/api/chats")
-def new_chat():
-    chat_id = create_chat()
-    return {"chat_id": chat_id}
+async def new_chat(current_user: dict = Depends(get_current_user)):
+    res = supabase.table("chats").insert({
+        "user_id": current_user["user_id"],
+        "title": "Новый чат"
+    }).execute()
+    return res.data[0]
 
 @app.delete("/api/chats/{chat_id}")
-def remove_chat(chat_id: str):
-    delete_chat(chat_id)
+async def delete_chat(chat_id: str, current_user: dict = Depends(get_current_user)):
+    supabase.table("chats")\
+        .delete()\
+        .eq("id", chat_id)\
+        .eq("user_id", current_user["user_id"])\
+        .execute()
     return {"ok": True}
 
 @app.get("/api/chats/{chat_id}/messages")
-def chat_messages(chat_id: str):
-    return get_chat_messages(chat_id)
+async def get_messages(chat_id: str, current_user: dict = Depends(get_current_user)):
+    chat = supabase.table("chats")\
+        .select("id")\
+        .eq("id", chat_id)\
+        .eq("user_id", current_user["user_id"])\
+        .execute()
+    if not chat.data:
+        raise HTTPException(status_code=404, detail="Чат не найден")
 
-# ─── Ask endpoint ──────────────────────────────────────────────────────────────
+    res = supabase.table("messages")\
+        .select("*")\
+        .eq("chat_id", chat_id)\
+        .order("created_at")\
+        .execute()
+    return res.data
+
+# ── Ask endpoint ───────────────────────────────────────────────────────────────
 @app.post("/api/ask")
-def ask(req: QuestionRequest):
-    chain = get_chain()
-    if chain is None:
-        return {"error": "База знаний пуста. Загрузите документы в настройках."}
+async def ask_question(
+    req: QuestionRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    chat = supabase.table("chats")\
+        .select("id")\
+        .eq("id", req.chat_id)\
+        .eq("user_id", current_user["user_id"])\
+        .execute()
+    if not chat.data:
+        raise HTTPException(status_code=404, detail="Чат не найден")
 
-    result = chain.invoke({"query": req.question})
-    answer = result["result"]
-    sources = []
-    for doc in result["source_documents"]:
-        sources.append({
-            "source": doc.metadata.get("source", "документ"),
-            "page": doc.metadata.get("page", "?"),
-            "text": " ".join(doc.page_content.split())[:300]
-        })
+    result = ask(req.question, user_id=current_user["user_id"])
 
-    messages = get_chat_messages(req.chat_id)
-    messages.append({"role": "user", "content": req.question})
-    messages.append({"role": "assistant", "content": answer, "sources": sources})
-    save_chat_messages(req.chat_id, messages)
+    supabase.table("messages").insert([
+        {"chat_id": req.chat_id, "role": "user", "content": req.question, "sources": []},
+        {"chat_id": req.chat_id, "role": "assistant", "content": result["answer"], "sources": result["sources"]}
+    ]).execute()
 
-    return {"answer": answer, "sources": sources}
+    messages_count = supabase.table("messages")\
+        .select("id", count="exact")\
+        .eq("chat_id", req.chat_id)\
+        .execute()
+    if messages_count.count <= 2:
+        title = req.question[:40] + ("..." if len(req.question) > 40 else "")
+        supabase.table("chats").update({"title": title}).eq("id", req.chat_id).execute()
 
-# ─── Docs upload endpoint ──────────────────────────────────────────────────────
-@app.post("/api/docs/upload")
-async def upload_docs(files: list[UploadFile] = File(...)):
+    return result
+
+# ── Docs endpoints ─────────────────────────────────────────────────────────────
+@app.get("/api/docs")
+async def list_docs(current_user: dict = Depends(get_current_user)):
+    if not os.path.exists("docs"):
+        return []
+    return [f for f in os.listdir("docs") if f.endswith((".pdf", ".docx"))]
+
+@app.post("/api/docs/upload/shared")
+async def upload_shared_docs(
+    files: list[UploadFile] = File(...),
+    current_user: dict = Depends(require_admin)
+):
     os.makedirs("docs", exist_ok=True)
     saved = []
     for file in files:
@@ -84,20 +199,59 @@ async def upload_docs(files: list[UploadFile] = File(...)):
         with open(path, "wb") as f:
             shutil.copyfileobj(file.file, f)
         saved.append(file.filename)
-
-    global _chain
-    _chain = None
     build_index()
+    return {"uploaded": saved}
+
+@app.post("/api/docs/upload/personal")
+async def upload_personal_docs(
+    files: list[UploadFile] = File(...),
+    current_user: dict = Depends(get_current_user)
+):
+    from langchain_community.document_loaders import PyPDFLoader
+    from langchain.text_splitter import RecursiveCharacterTextSplitter
+    from langchain_openai import OpenAIEmbeddings
+    import tempfile
+
+    embeddings_model = OpenAIEmbeddings(model="text-embedding-3-small")
+    splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
+    saved = []
+
+    for file in files:
+        suffix = ".pdf" if file.filename.endswith(".pdf") else ".docx"
+        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+            shutil.copyfileobj(file.file, tmp)
+            tmp_path = tmp.name
+
+        try:
+            loader = PyPDFLoader(tmp_path)
+            docs = loader.load()
+            chunks = splitter.split_documents(docs)
+
+            for chunk in chunks:
+                embedding = embeddings_model.embed_query(chunk.page_content)
+                supabase.table("user_documents").insert({
+                    "user_id": current_user["user_id"],
+                    "content": chunk.page_content,
+                    "metadata": {**chunk.metadata, "source": file.filename},
+                    "embedding": embedding
+                }).execute()
+
+            saved.append(file.filename)
+        finally:
+            os.unlink(tmp_path)
 
     return {"uploaded": saved}
 
-@app.get("/api/docs")
-def list_docs():
-    if not os.path.exists("docs"):
-        return []
-    return [f for f in os.listdir("docs") if f.endswith(".pdf")]
+@app.get("/api/docs/personal")
+async def list_personal_docs(current_user: dict = Depends(get_current_user)):
+    res = supabase.table("user_documents")\
+        .select("metadata")\
+        .eq("user_id", current_user["user_id"])\
+        .execute()
+    names = list({d["metadata"].get("source", "") for d in res.data if d.get("metadata")})
+    return names
 
-# ─── Static files ──────────────────────────────────────────────────────────────
+# ── Static ─────────────────────────────────────────────────────────────────────
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 @app.get("/")

@@ -10,10 +10,28 @@
 </head>
 <body class="dark">
 
-<div class="layout">
-  <!-- Sidebar -->
+<!-- Auth screen -->
+<div class="auth-screen" id="authScreen">
+  <div class="auth-card">
+    <div class="auth-logo">ГПС <span>Ассистент</span></div>
+    <div id="authError" class="auth-error"></div>
+    <input class="auth-input" type="email" id="authEmail" placeholder="Email">
+    <div class="password-wrap">
+      <input class="auth-input" type="password" id="authPassword" placeholder="Пароль">
+      <button class="eye-btn" onclick="togglePassword('authPassword', this)" tabindex="-1">
+        <svg class="eye-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+        </svg>
+      </button>
+    </div>
+    <button class="auth-submit" onclick="submitAuth()">Войти</button>
+  </div>
+</div>
+
+<!-- App -->
+<div class="layout hidden" id="appLayout">
   <aside class="sidebar">
-    <div class="sidebar-header">
+    <div class="sidebar-header" onclick="showHome()" style="cursor:pointer">
       <span class="logo">ГПС</span>
       <span class="logo-sub">Ассистент</span>
     </div>
@@ -28,44 +46,51 @@
     <div class="chat-list" id="chatList"></div>
 
     <div class="sidebar-footer">
-      <button class="btn-settings" onclick="showPage('settings')">
+      <button class="btn-settings" id="btnSettings" onclick="showPage('settings')">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-          <circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
         </svg>
         Настройки
       </button>
-      <button class="btn-theme" onclick="toggleTheme()" title="Сменить тему">
+      <button class="btn-theme" onclick="toggleTheme()">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-          <circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+          <circle cx="12" cy="12" r="5"/>
+          <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+        </svg>
+      </button>
+      <button class="btn-logout" onclick="logout()" title="Выйти">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>
         </svg>
       </button>
     </div>
   </aside>
 
-  <!-- Main -->
   <main class="main">
-
-    <!-- Chat page -->
-    <div class="page" id="page-chat">
-      <div class="chat-empty" id="chatEmpty">
+    <!-- Home page -->
+    <div class="page" id="page-home">
+      <div class="chat-empty">
         <div class="empty-icon">
           <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
           </svg>
         </div>
         <h2>ГПС / Ассистент</h2>
-        <p>Задавайте вопросы по нормативным документам и регламентам</p>
+        <p id="welcomeText">Задавайте вопросы по нормативным документам и регламентам</p>
         <button class="btn-start" onclick="newChat()">Начать чат</button>
       </div>
+    </div>
 
+    <!-- Chat page -->
+    <div class="page hidden" id="page-chat">
       <div class="messages" id="messages"></div>
-
-      <div class="input-area" id="inputArea" style="display:none">
+      <div class="input-area">
         <div class="input-wrap">
-          <textarea id="questionInput" placeholder="Задайте вопрос по документам..." rows="1"
+          <textarea id="questionInput" placeholder="Задайте вопрос по документам..."
             onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
           <button class="btn-send" onclick="sendQuestion()" id="sendBtn">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M22 2L11 13M22 2L15 22l-4-9-9-4 20-7z"/>
             </svg>
           </button>
@@ -79,10 +104,34 @@
         <h2>Настройки</h2>
 
         <div class="settings-section">
-          <div class="section-label">База знаний</div>
+          <div class="section-label">Аккаунт</div>
+          <div class="account-info" id="accountInfo"></div>
+        </div>
+
+        <!-- Личные документы (все пользователи) -->
+        <div class="settings-section">
+          <div class="section-label">Мои документы</div>
+          <div class="doc-list" id="personalDocList"></div>
+          <div class="upload-area">
+            <input type="file" id="personalFileInput" multiple accept=".pdf,.docx"
+              onchange="uploadPersonalFiles(this.files)">
+            <div class="upload-hint">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/>
+              </svg>
+              <span>PDF или Word — <label for="personalFileInput" class="upload-link">выбрать файлы</label></span>
+            </div>
+          </div>
+          <div class="upload-status" id="personalUploadStatus"></div>
+        </div>
+
+        <!-- База знаний (только admin) -->
+        <div class="settings-section" id="docsSection" style="display:none">
+          <div class="section-label">База знаний организации</div>
           <div class="doc-list" id="docList"></div>
-          <div class="upload-area" id="uploadArea">
-            <input type="file" id="fileInput" multiple accept=".pdf" onchange="uploadFiles(this.files)">
+          <div class="upload-area">
+            <input type="file" id="fileInput" multiple accept=".pdf,.docx"
+              onchange="uploadFiles(this.files)">
             <div class="upload-hint">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/>
@@ -92,9 +141,28 @@
           </div>
           <div class="upload-status" id="uploadStatus"></div>
         </div>
+
+        <!-- Пользователи (только admin) -->
+        <div class="settings-section" id="usersSection" style="display:none">
+          <div class="section-label">Пользователи</div>
+          <div class="user-list" id="userList"></div>
+          <div class="create-user-form">
+            <input class="auth-input" type="text" id="newUserName" placeholder="Имя пользователя">
+            <input class="auth-input" type="email" id="newUserEmail" placeholder="Email">
+            <div class="password-wrap">
+              <input class="auth-input" type="password" id="newUserPassword" placeholder="Пароль">
+              <button class="eye-btn" onclick="togglePassword('newUserPassword', this)" tabindex="-1">
+                <svg class="eye-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+                </svg>
+              </button>
+            </div>
+            <button class="auth-submit" onclick="createUser()">Создать пользователя</button>
+            <div class="upload-status" id="createUserStatus"></div>
+          </div>
+        </div>
       </div>
     </div>
-
   </main>
 </div>
 
