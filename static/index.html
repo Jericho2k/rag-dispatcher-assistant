@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ГПС / Ассистент</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="dark">
+
+<div class="layout">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <span class="logo">ГПС</span>
+      <span class="logo-sub">Ассистент</span>
+    </div>
+
+    <button class="btn-new-chat" onclick="newChat()">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+        <path d="M7 1v12M1 7h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+      </svg>
+      Новый чат
+    </button>
+
+    <div class="chat-list" id="chatList"></div>
+
+    <div class="sidebar-footer">
+      <button class="btn-settings" onclick="showPage('settings')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+        </svg>
+        Настройки
+      </button>
+      <button class="btn-theme" onclick="toggleTheme()" title="Сменить тему">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+        </svg>
+      </button>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main">
+
+    <!-- Chat page -->
+    <div class="page" id="page-chat">
+      <div class="chat-empty" id="chatEmpty">
+        <div class="empty-icon">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+          </svg>
+        </div>
+        <h2>ГПС / Ассистент</h2>
+        <p>Задавайте вопросы по нормативным документам и регламентам</p>
+        <button class="btn-start" onclick="newChat()">Начать чат</button>
+      </div>
+
+      <div class="messages" id="messages"></div>
+
+      <div class="input-area" id="inputArea" style="display:none">
+        <div class="input-wrap">
+          <textarea id="questionInput" placeholder="Задайте вопрос по документам..." rows="1"
+            onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+          <button class="btn-send" onclick="sendQuestion()" id="sendBtn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M22 2L11 13M22 2L15 22l-4-9-9-4 20-7z"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Settings page -->
+    <div class="page hidden" id="page-settings">
+      <div class="settings-wrap">
+        <h2>Настройки</h2>
+
+        <div class="settings-section">
+          <div class="section-label">База знаний</div>
+          <div class="doc-list" id="docList"></div>
+          <div class="upload-area" id="uploadArea">
+            <input type="file" id="fileInput" multiple accept=".pdf" onchange="uploadFiles(this.files)">
+            <div class="upload-hint">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/>
+              </svg>
+              <span>Перетащите PDF или <label for="fileInput" class="upload-link">выберите файлы</label></span>
+            </div>
+          </div>
+          <div class="upload-status" id="uploadStatus"></div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>
