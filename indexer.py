@@ -1,9 +1,9 @@
 import os
 from dotenv import load_dotenv
 from langchain_community.document_loaders import PyPDFLoader, DirectoryLoader
-from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_openai import OpenAIEmbeddings
 from database import supabase
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 load_dotenv()
 

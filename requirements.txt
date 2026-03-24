@@ -12,3 +12,4 @@ passlib[bcrypt]
 pypdf
 python-dotenv
 pydantic-settings
+langchain-text-splitters
