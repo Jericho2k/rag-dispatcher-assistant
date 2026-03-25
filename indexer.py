@@ -1,6 +1,6 @@
 import os
 from dotenv import load_dotenv
-from langchain_community.document_loaders import PyPDFLoader, DirectoryLoader
+from langchain_community.document_loaders import PyPDFLoader, DirectoryLoader, Docx2txtLoader
 from langchain_openai import OpenAIEmbeddings
 from database import supabase
 from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -8,8 +8,16 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 load_dotenv()
 
 def build_index(docs_path: str = "docs/"):
-    loader = DirectoryLoader(docs_path, glob="**/*.pdf", loader_cls=PyPDFLoader)
-    documents = loader.load()
+    documents = []
+
+    # PDF
+    pdf_loader = DirectoryLoader(docs_path, glob="**/*.pdf", loader_cls=PyPDFLoader)
+    documents += pdf_loader.load()
+
+    # DOCX
+    docx_loader = DirectoryLoader(docs_path, glob="**/*.docx", loader_cls=Docx2txtLoader)
+    documents += docx_loader.load()
+
     print(f"✅ Загружено документов: {len(documents)}")
 
     splitter = RecursiveCharacterTextSplitter(
