@@ -113,13 +113,16 @@
           <div class="section-label">Мои документы</div>
           <div class="doc-list" id="personalDocList"></div>
           <div class="upload-area">
-            <input type="file" id="personalFileInput" multiple accept=".pdf,.docx"
+            <input type="file" id="personalFileInput" multiple accept=".pdf"
               onchange="uploadPersonalFiles(this.files)">
             <div class="upload-hint">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/>
               </svg>
-              <span>PDF или Word — <label for="personalFileInput" class="upload-link">выбрать файлы</label></span>
+              <span>Только PDF — <label for="personalFileInput" class="upload-link">выбрать файл</label></span>
+            </div>
+            <div style="font-size:0.7rem;color:var(--text3);margin-top:0.4rem">
+              Поддерживается только .pdf · Word документы конвертируйте перед загрузкой
             </div>
           </div>
           <div class="upload-status" id="personalUploadStatus"></div>
@@ -130,13 +133,16 @@
           <div class="section-label">База знаний организации</div>
           <div class="doc-list" id="docList"></div>
           <div class="upload-area">
-            <input type="file" id="fileInput" multiple accept=".pdf,.docx"
+            <input type="file" id="fileInput" multiple accept=".pdf"
               onchange="uploadFiles(this.files)">
             <div class="upload-hint">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/>
               </svg>
-              <span>Перетащите PDF или <label for="fileInput" class="upload-link">выберите файлы</label></span>
+              <span>Только PDF — <label for="fileInput" class="upload-link">выбрать файл</label></span>
+            </div>
+            <div style="font-size:0.7rem;color:var(--text3);margin-top:0.4rem">
+              Поддерживается только .pdf · Word документы конвертируйте перед загрузкой
             </div>
           </div>
           <div class="upload-status" id="uploadStatus"></div>
