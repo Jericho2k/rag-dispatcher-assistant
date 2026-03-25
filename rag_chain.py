@@ -22,7 +22,7 @@ PROMPT_TEMPLATE = """Ты — эксперт-ассистент для дисп�
 embeddings_model = OpenAIEmbeddings(model="text-embedding-3-small")
 llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
 
-def search_documents(query: str, threshold: float = 0.3, k: int = 6):
+def search_documents(query: str, threshold: float = 0.5, k: int = 6):
     query_embedding = embeddings_model.embed_query(query)
     result = supabase.rpc("match_documents", {
         "query_embedding": query_embedding,
@@ -31,7 +31,7 @@ def search_documents(query: str, threshold: float = 0.3, k: int = 6):
     }).execute()
     return result.data or []
 
-def search_user_documents(query: str, user_id: str, threshold: float = 0.3, k: int = 4):
+def search_user_documents(query: str, user_id: str, threshold: float = 0.5, k: int = 4):
     query_embedding = embeddings_model.embed_query(query)
     result = supabase.rpc("match_user_documents", {
         "query_embedding": query_embedding,
@@ -45,6 +45,9 @@ def ask(question: str, user_id: str = None):
     shared_docs = search_documents(question)
     personal_docs = search_user_documents(question, user_id) if user_id else []
     all_docs = shared_docs + personal_docs
+
+    # Оставляем максимум 4 самых релевантных
+    all_docs = all_docs[:4]
 
     if not all_docs:
         return {
