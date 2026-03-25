@@ -104,10 +104,12 @@ function showPage(name) {
   document.getElementById(`page-${name}`).classList.remove('hidden');
   if (name === 'settings') {
     updateAccountInfo();
-    loadPersonalDocs();
     if (currentUser?.role === 'admin') {
+      document.getElementById('personalDocsSection').style.display = 'none';
       loadDocs();
       loadUsers();
+    } else {
+      loadPersonalDocs();
     }
   }
 }
@@ -309,9 +311,23 @@ async function loadDocs() {
         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
         <polyline points="14 2 14 8 20 8"/>
       </svg>
-      ${d}
+      <span style="flex:1">${d}</span>
+      <button onclick="deleteSharedDoc('${d}')" style="
+        background:none;border:none;color:var(--text3);cursor:pointer;
+        padding:2px 6px;font-size:0.7rem;transition:0.15s ease;
+      " onmouseover="this.style.color='var(--danger)'"
+         onmouseout="this.style.color='var(--text3)'">✕</button>
     </div>
   `).join('') || '<div style="font-size:0.78rem;color:var(--text3)">Документов нет</div>';
+}
+
+async function deleteSharedDoc(filename) {
+  if (!confirm(`Удалить "${filename}" из базы знаний?`)) return;
+  await fetch(`/api/docs/shared/${encodeURIComponent(filename)}`, {
+    method: 'DELETE',
+    headers: authHeaders()
+  });
+  loadDocs();
 }
 
 async function uploadFiles(files) {
@@ -348,9 +364,23 @@ async function loadPersonalDocs() {
         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
         <polyline points="14 2 14 8 20 8"/>
       </svg>
-      ${d}
+      <span style="flex:1">${d}</span>
+      <button onclick="deletePersonalDoc('${d}')" style="
+        background:none;border:none;color:var(--text3);cursor:pointer;
+        padding:2px 6px;font-size:0.7rem;transition:0.15s ease;
+      " onmouseover="this.style.color='var(--danger)'"
+         onmouseout="this.style.color='var(--text3)'">✕</button>
     </div>
   `).join('') || '<div style="font-size:0.78rem;color:var(--text3)">Нет личных документов</div>';
+}
+
+async function deletePersonalDoc(filename) {
+  if (!confirm(`Удалить "${filename}"?`)) return;
+  await fetch(`/api/docs/personal/${encodeURIComponent(filename)}`, {
+    method: 'DELETE',
+    headers: authHeaders()
+  });
+  loadPersonalDocs();
 }
 
 async function uploadPersonalFiles(files) {
