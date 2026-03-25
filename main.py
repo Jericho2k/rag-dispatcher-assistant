@@ -185,9 +185,15 @@ async def ask_question(
 # ── Docs endpoints ─────────────────────────────────────────────────────────────
 @app.get("/api/docs")
 async def list_docs(current_user: dict = Depends(get_current_user)):
-    if not os.path.exists("docs"):
-        return []
-    return [f for f in os.listdir("docs") if f.endswith((".pdf", ".docx"))]
+    res = supabase.table("documents")\
+        .select("metadata")\
+        .execute()
+    names = list({
+        d["metadata"].get("source", "").replace("docs/", "") 
+        for d in res.data 
+        if d.get("metadata")
+    })
+    return sorted(names)
 
 @app.post("/api/docs/upload/shared")
 async def upload_shared_docs(
@@ -233,9 +239,6 @@ async def index_stream(current_user: dict = Depends(get_current_user_query)):
         await asyncio.sleep(0.1)
 
         embeddings_model = OpenAIEmbeddings(model="text-embedding-3-small")
-
-        # Очищаем старые документы
-        supabase.table("documents").delete().neq("id", 0).execute()
 
         for i, chunk in enumerate(chunks):
             embedding = embeddings_model.embed_query(chunk.page_content)
