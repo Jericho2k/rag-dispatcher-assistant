@@ -203,6 +203,8 @@ async def upload_shared_docs(
     os.makedirs("docs", exist_ok=True)
     saved = []
     for file in files:
+        if not file.filename.endswith(".pdf"):
+            continue
         path = os.path.join("docs", file.filename)
         with open(path, "wb") as f:
             shutil.copyfileobj(file.file, f)
@@ -271,22 +273,15 @@ async def upload_personal_docs(
     saved = []
 
     for file in files:
-        suffix = ".pdf" if file.filename.endswith(".pdf") else ".docx"
-        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+        if not file.filename.endswith(".pdf"):
+            continue
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
             shutil.copyfileobj(file.file, tmp)
             tmp_path = tmp.name
 
         try:
-            if file.filename.endswith('.pdf'):
-                loader = PyPDFLoader(tmp_path)
-                docs = loader.load()
-            elif file.filename.endswith('.docx'):
-                from langchain_community.document_loaders import Docx2txtLoader
-                loader = Docx2txtLoader(tmp_path)
-                docs = loader.load()
-            else:
-                saved.append(f"{file.filename} (неподдерживаемый формат)")
-                continue
+            loader = PyPDFLoader(tmp_path)
+            docs = loader.load()
 
             chunks = splitter.split_documents(docs)
             for chunk in chunks:
