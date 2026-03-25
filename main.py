@@ -1,13 +1,15 @@
 import os
 import shutil
 from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, status
+from fastapi.responses import StreamingResponse
+import asyncio
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel
 from dotenv import load_dotenv
 from database import supabase
-from auth import create_access_token, get_current_user, require_admin
+from auth import create_access_token, get_current_user, require_admin, get_current_user_query
 from rag_chain import ask
 from indexer import build_index
 
@@ -199,8 +201,57 @@ async def upload_shared_docs(
         with open(path, "wb") as f:
             shutil.copyfileobj(file.file, f)
         saved.append(file.filename)
-    build_index()
-    return {"uploaded": saved}
+    return {"uploaded": saved, "status": "saved"}
+
+@app.get("/api/docs/index/stream")
+async def index_stream(current_user: dict = Depends(get_current_user_query)):
+    async def generate():
+        from langchain_community.document_loaders import PyPDFLoader, DirectoryLoader, Docx2txtLoader
+        from langchain_text_splitters import RecursiveCharacterTextSplitter
+        from langchain_openai import OpenAIEmbeddings
+
+        yield "data: {\"status\": \"loading\", \"message\": \"Загружаю документы...\"}\n\n"
+        await asyncio.sleep(0.1)
+
+        documents = []
+        docs_path = "docs/"
+
+        if os.path.exists(docs_path):
+            pdf_loader = DirectoryLoader(docs_path, glob="**/*.pdf", loader_cls=PyPDFLoader)
+            documents += pdf_loader.load()
+            docx_loader = DirectoryLoader(docs_path, glob="**/*.docx", loader_cls=Docx2txtLoader)
+            documents += docx_loader.load()
+
+        splitter = RecursiveCharacterTextSplitter(
+            chunk_size=1000, chunk_overlap=200,
+            separators=["\n\n", "\n", ".", " "]
+        )
+        chunks = splitter.split_documents(documents)
+        total = len(chunks)
+
+        yield f"data: {{\"status\": \"indexing\", \"total\": {total}, \"current\": 0, \"pct\": 0}}\n\n"
+        await asyncio.sleep(0.1)
+
+        embeddings_model = OpenAIEmbeddings(model="text-embedding-3-small")
+
+        # Очищаем старые документы
+        supabase.table("documents").delete().neq("id", 0).execute()
+
+        for i, chunk in enumerate(chunks):
+            embedding = embeddings_model.embed_query(chunk.page_content)
+            supabase.table("documents").insert({
+                "content": chunk.page_content,
+                "metadata": chunk.metadata,
+                "embedding": embedding
+            }).execute()
+
+            pct = round((i + 1) / total * 100)
+            yield f"data: {{\"status\": \"indexing\", \"total\": {total}, \"current\": {i+1}, \"pct\": {pct}}}\n\n"
+            await asyncio.sleep(0)
+
+        yield f"data: {{\"status\": \"done\", \"total\": {total}}}\n\n"
+
+    return StreamingResponse(generate(), media_type="text/event-stream")
 
 @app.post("/api/docs/upload/personal")
 async def upload_personal_docs(

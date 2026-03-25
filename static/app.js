@@ -333,8 +333,10 @@ async function deleteSharedDoc(filename) {
 async function uploadFiles(files) {
   if (!files.length) return;
   const status = document.getElementById('uploadStatus');
+
+  // Сначала сохраняем файлы
   status.className = 'upload-status';
-  status.textContent = `Загружаю ${files.length} файл(ов)...`;
+  status.innerHTML = 'Загружаю файлы...';
 
   const form = new FormData();
   Array.from(files).forEach(f => form.append('files', f));
@@ -343,13 +345,45 @@ async function uploadFiles(files) {
     const res = await fetch('/api/docs/upload/shared', {
       method: 'POST', headers: authHeaders(), body: form
     });
-    const data = await res.json();
-    status.className = 'upload-status success';
-    status.textContent = `✓ Добавлено: ${data.uploaded.join(', ')}`;
-    loadDocs();
-  } catch {
+    await res.json();
+
+    // Теперь запускаем индексирование со стримингом прогресса
+    status.innerHTML = 'Индексирую документы...';
+
+    const evtSource = new EventSource(
+      `/api/docs/index/stream?token=${localStorage.getItem('token')}`
+    );
+
+    evtSource.onmessage = (e) => {
+      const d = JSON.parse(e.data);
+
+      if (d.status === 'loading') {
+        status.innerHTML = d.message;
+      } else if (d.status === 'indexing') {
+        const pct = d.pct;
+        const bar = '█'.repeat(Math.floor(pct / 5)) + '░'.repeat(20 - Math.floor(pct / 5));
+        status.innerHTML = `
+          <div style="font-family: monospace; font-size: 0.75rem; color: var(--text2)">
+            [${bar}] ${pct}% (${d.current}/${d.total})
+          </div>
+        `;
+      } else if (d.status === 'done') {
+        status.className = 'upload-status success';
+        status.innerHTML = `✓ Проиндексировано ${d.total} чанков`;
+        evtSource.close();
+        loadDocs();
+      }
+    };
+
+    evtSource.onerror = () => {
+      evtSource.close();
+      status.className = 'upload-status error';
+      status.innerHTML = 'Ошибка индексирования';
+    };
+
+  } catch (e) {
     status.className = 'upload-status error';
-    status.textContent = 'Ошибка загрузки.';
+    status.innerHTML = 'Ошибка загрузки.';
   }
 }
 
