@@ -223,10 +223,18 @@ async def upload_personal_docs(
             tmp_path = tmp.name
 
         try:
-            loader = PyPDFLoader(tmp_path)
-            docs = loader.load()
-            chunks = splitter.split_documents(docs)
+            if file.filename.endswith('.pdf'):
+                loader = PyPDFLoader(tmp_path)
+                docs = loader.load()
+            elif file.filename.endswith('.docx'):
+                from langchain_community.document_loaders import Docx2txtLoader
+                loader = Docx2txtLoader(tmp_path)
+                docs = loader.load()
+            else:
+                saved.append(f"{file.filename} (неподдерживаемый формат)")
+                continue
 
+            chunks = splitter.split_documents(docs)
             for chunk in chunks:
                 embedding = embeddings_model.embed_query(chunk.page_content)
                 supabase.table("user_documents").insert({
@@ -235,7 +243,6 @@ async def upload_personal_docs(
                     "metadata": {**chunk.metadata, "source": file.filename},
                     "embedding": embedding
                 }).execute()
-
             saved.append(file.filename)
         finally:
             os.unlink(tmp_path)

@@ -5,8 +5,14 @@ let currentUser = null;
 document.addEventListener('DOMContentLoaded', () => {
   const saved = localStorage.getItem('theme') || 'dark';
   document.body.className = saved;
+
+  // Скрываем auth сразу если есть токен — до проверки
   const token = localStorage.getItem('token');
-  if (token) initApp();
+  if (token) {
+    document.getElementById('authScreen').classList.add('hidden');
+    document.getElementById('appLayout').classList.remove('hidden');
+    initApp();
+  }
 });
 
 // ── Theme ─────────────────────────────────────────────────────────────────────
