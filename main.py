@@ -249,6 +249,37 @@ async def upload_personal_docs(
 
     return {"uploaded": saved}
 
+@app.delete("/api/docs/shared/{filename}")
+async def delete_shared_doc(
+    filename: str,
+    current_user: dict = Depends(require_admin)
+):
+    # Удаляем из файловой системы
+    path = os.path.join("docs", filename)
+    if os.path.exists(path):
+        os.remove(path)
+
+    # Удаляем чанки из Supabase
+    supabase.table("documents")\
+        .delete()\
+        .like("metadata->>source", f"%{filename}%")\
+        .execute()
+
+    return {"ok": True}
+
+@app.delete("/api/docs/personal/{filename}")
+async def delete_personal_doc(
+    filename: str,
+    current_user: dict = Depends(get_current_user)
+):
+    supabase.table("user_documents")\
+        .delete()\
+        .eq("user_id", current_user["user_id"])\
+        .like("metadata->>source", f"%{filename}%")\
+        .execute()
+
+    return {"ok": True}
+
 @app.get("/api/docs/personal")
 async def list_personal_docs(current_user: dict = Depends(get_current_user)):
     res = supabase.table("user_documents")\
