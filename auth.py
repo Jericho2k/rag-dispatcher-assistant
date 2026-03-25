@@ -2,7 +2,7 @@ import os
 from datetime import datetime, timedelta
 from jose import JWTError, jwt
 from passlib.context import CryptContext
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status, Query
 from fastapi.security import OAuth2PasswordBearer
 from database import supabase
 
@@ -33,6 +33,19 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
     except JWTError:
         raise credentials_exception
 
+    return {"user_id": user_id, "role": payload.get("role", "user")}
+
+async def get_current_user_query(token: str = Query(None)):
+    """Для SSE endpoints где нельзя передать заголовок"""
+    if not token:
+        raise HTTPException(status_code=401, detail="Token required")
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        user_id = str(payload.get("sub"))
+        if user_id is None:
+            raise HTTPException(status_code=401)
+    except JWTError:
+        raise HTTPException(status_code=401)
     return {"user_id": user_id, "role": payload.get("role", "user")}
 
 async def require_admin(current_user: dict = Depends(get_current_user)):
