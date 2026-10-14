@@ -6,6 +6,13 @@ document.addEventListener('DOMContentLoaded', () => {
   const saved = localStorage.getItem('theme') || 'dark';
   document.body.className = saved;
 
+  // Мобильная шторка сайдбара
+  document.getElementById('menuBtn').addEventListener('click', () =>
+    setDrawer(!document.querySelector('.sidebar').classList.contains('open')));
+  document.getElementById('drawerScrim').addEventListener('click', () => setDrawer(false));
+  document.getElementById('newChatBtn').addEventListener('click', () => { setDrawer(false); newChat(); });
+  addEventListener('keydown', e => { if (e.key === 'Escape') setDrawer(false); });
+
   // Скрываем auth сразу если есть токен — до проверки
   const token = localStorage.getItem('token');
   if (token) {
@@ -112,6 +119,13 @@ function showPage(name) {
       loadPersonalDocs();
     }
   }
+  setDrawer(false); // мобильная шторка закрывается при любой навигации
+}
+
+// ── Mobile drawer ─────────────────────────────────────────────────────────────
+function setDrawer(open) {
+  document.querySelector('.sidebar').classList.toggle('open', open);
+  document.getElementById('drawerScrim').classList.toggle('on', open);
 }
 
 // ── Chats ─────────────────────────────────────────────────────────────────────

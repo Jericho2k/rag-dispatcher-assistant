@@ -624,3 +624,80 @@ textarea::placeholder { color: var(--text3); }
 }
 .eye-btn:hover { color: var(--text); }
 .eye-icon { width: 16px; height: 16px; }
+
+/* ── Мобильная адаптация ──
+   На десктопе интерфейс не меняется вовсе. На узких экранах появляется
+   шапка с меню, сайдбар превращается в выдвижную шторку. */
+.mobile-bar { display: none; }
+.drawer-scrim { display: none; }
+
+@media (max-width: 720px) {
+  body { height: 100dvh; }
+  .layout { flex-direction: column; height: 100dvh; }
+
+  .mobile-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    padding-top: calc(10px + env(safe-area-inset-top));
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .mobile-bar .mb-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    min-width: 34px;
+    border-radius: 8px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    color: var(--text);
+    cursor: pointer;
+    transition: var(--transition);
+  }
+  .mobile-bar .mb-btn:hover { background: var(--bg4); }
+  .mobile-bar .mb-title { flex: 1; font-size: 0.95rem; font-weight: 600; color: var(--text); }
+  .mobile-bar .mb-title span { color: var(--text2); font-weight: 400; font-size: 0.8rem; }
+
+  .sidebar {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 60;
+    transform: translateX(-102%);
+    transition: transform 0.22s ease;
+    box-shadow: 8px 0 24px rgba(0, 0, 0, 0.4);
+    padding-top: calc(1.25rem + env(safe-area-inset-top));
+    padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));
+  }
+  .sidebar.open { transform: none; }
+
+  .drawer-scrim {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 55;
+    background: rgba(0, 0, 0, 0.5);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.22s ease;
+  }
+  .drawer-scrim.on { opacity: 1; pointer-events: auto; }
+
+  .messages { padding: 1.2rem 0; }
+  .message { padding: 1.1rem 1.15rem; }
+  .input-area { padding: 0.7rem 0.8rem calc(0.9rem + env(safe-area-inset-bottom)); }
+  .settings-wrap { padding: 1.5rem 1.1rem; }
+  .chat-empty { padding: 1.5rem; }
+
+  /* iOS Safari: убрать двойной тап-зум на кнопках и элементах списка */
+  button, a, label, .chat-item, .upload-area, .sidebar-header { touch-action: manipulation; }
+  /* iOS Safari: поле ввода мельче 16px заставляет браузер зумить страницу
+     при фокусе (например, после «Начать чат») */
+  textarea, .auth-input { font-size: 16px; }
+}

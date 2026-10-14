@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>ГПС / Ассистент</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
@@ -30,6 +30,24 @@
 
 <!-- App -->
 <div class="layout hidden" id="appLayout">
+
+  <!-- мобильная шапка (только на узких экранах) -->
+  <header class="mobile-bar">
+    <button class="mb-btn" id="menuBtn" aria-label="Меню">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <rect y="2" width="16" height="1.5" rx="0.75" fill="currentColor"/>
+        <rect y="7.25" width="16" height="1.5" rx="0.75" fill="currentColor"/>
+        <rect y="12.5" width="16" height="1.5" rx="0.75" fill="currentColor"/>
+      </svg>
+    </button>
+    <span class="mb-title">ГПС <span>Ассистент</span></span>
+    <button class="mb-btn" id="newChatBtn" aria-label="Новый чат">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+        <path d="M7 1v12M1 7h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+      </svg>
+    </button>
+  </header>
+
   <aside class="sidebar">
     <div class="sidebar-header" onclick="showHome()" style="cursor:pointer">
       <span class="logo">ГПС</span>
@@ -66,6 +84,7 @@
       </button>
     </div>
   </aside>
+  <div class="drawer-scrim" id="drawerScrim"></div>
 
   <main class="main">
     <!-- Home page -->
